@@ -10,6 +10,7 @@ import torch.nn.functional as F
 class STN3d(nn.Module):
     def __init__(self, channel):
         super(STN3d, self).__init__()
+        
         self.conv1 = torch.nn.Conv1d(channel, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
@@ -43,6 +44,7 @@ class STN3d(nn.Module):
         x = x + iden
         x = x.view(-1, 3, 3)
         return x
+        #这段代码用于初始化一个恒等变换矩阵，并将其与通过网络生成的仿射变换矩阵相加。这个操作确保网络的输出矩阵在初始化时是一个恒等变换矩阵，从而提供一个合理的初始值。
 
 
 class STNkd(nn.Module):
@@ -84,7 +86,6 @@ class STNkd(nn.Module):
         x = x.view(-1, self.k, self.k)
         return x
 
-
 class PointNetEncoder(nn.Module):
     def __init__(self, global_feat=True, feature_transform=False, channel=3):
         super(PointNetEncoder, self).__init__()
@@ -101,7 +102,8 @@ class PointNetEncoder(nn.Module):
             self.fstn = STNkd(k=64)
 
     def forward(self, x):
-        B, D, N = x.size()
+        B, D, N = x.size() 
+        #B：batchsize，D：3/6,N:一个物体所取的点的数目
         trans = self.stn(x)
         x = x.transpose(2, 1)
         if D > 3:
@@ -110,6 +112,7 @@ class PointNetEncoder(nn.Module):
         x = torch.bmm(x, trans)
         if D > 3:
             x = torch.cat([x, feature], dim=2)
+            #在第三个维度（特征）进行拼接
         x = x.transpose(2, 1)
         x = F.relu(self.bn1(self.conv1(x)))
 
@@ -125,6 +128,7 @@ class PointNetEncoder(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x = self.bn3(self.conv3(x))
         x = torch.max(x, 2, keepdim=True)[0]
+        #使用 torch.max 在点维度（维度 2）上进行最大池化，得到全局特征
         x = x.view(-1, 1024)
         if self.global_feat:
             return x, trans, trans_feat
